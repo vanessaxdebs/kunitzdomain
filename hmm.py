@@ -14,10 +14,9 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-# Add this near the top of hmm.py
-from pathlib import Path
 
-def find_config():
+# === 1. CONFIGURATION ===
+def find_config() -> Path:
     """Locate config.yaml whether running from bin/ or project root"""
     script_dir = Path(__file__).parent
     for path in [
@@ -29,9 +28,7 @@ def find_config():
             return path.resolve()
     raise FileNotFoundError("config.yaml not found!")
 
-CONFIG = load_config(find_config())
-# === 1. CONFIGURATION ===
-def load_config(config_file: str = "config.yaml") -> Dict:
+def load_config(config_file: Path = None) -> Dict:
     """Load and validate configuration from YAML file
     
     Args:
@@ -43,6 +40,9 @@ def load_config(config_file: str = "config.yaml") -> Dict:
     Raises:
         SystemExit: If config file is invalid or missing required fields
     """
+    if config_file is None:
+        config_file = find_config()
+    
     required_fields = {
         'output_dir': str,
         'seed_alignment': str,
@@ -278,4 +278,3 @@ if __name__ == "__main__":
     run_hmmlogo(hmm_file, output_dir)
 
     print(f"\n✅ Pipeline finished. Results saved to: {output_dir}")
-
