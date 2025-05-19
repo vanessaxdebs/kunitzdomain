@@ -1,0 +1,14 @@
+# Kunitz HMM Project Configuration
+
+# Required parameters
+output_dir: "results"
+seed_alignment: "data/kunitz_seed.sto"
+validation_fasta: "data/validation.fasta"
+validation_labels: "data/validation_labels.txt"
+swissprot_fasta: "data/swissprot.fasta"
+e_value_cutoff: 1e-3
+pdb_id: "3TGI"
+
+# Optional parameters
+# threads: 4
+# max_hits: 1000
