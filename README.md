@@ -99,11 +99,8 @@ You can visualize your model’s performance on the validation set using `plot_c
     ```sh
     python3 plot_confusion_matrix.py
     ```
-3. It will create `confusion_matrix_kunitz.png` like the one in [`assets/confusion_matrix_kunitz.png`](assets/confusion_matrix_kunitz.png).
+3. It will create `confusion_matrix_kunitz.png` like the one in [`assets/confusion_matrix_kunitz.png`].
 
-#### Sample Plot
-
-![Confusion Matrix Example](assets/confusion_matrix_kunitz.png)
 
 ---
 
