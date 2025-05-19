@@ -15,6 +15,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+def check_file(path, prefix=None):
+    # Check if file exists
+    if not os.path.isfile(path):
+        print(f"ERROR: Required file '{path}' is missing.")
+        return False
+    # Check if file is non-empty
+    if os.path.getsize(path) == 0:
+        print(f"ERROR: Required file '{path}' is empty.")
+        return False
+    # Optionally, check for correct format
+    if prefix:
+        with open(path) as f:
+            first_line = f.readline()
+            if not first_line.startswith(prefix):
+                print(f"ERROR: File '{path}' does not appear to be in the correct format. Expected to start with '{prefix}'.")
+                return False
+    return True
+
+# Check your required files
+if not check_file("data/kunitz_seed.sto", "# STOCKHOLM"):
+    sys.exit(1)
+if not check_file("data/validation.fasta", ">"):
+    sys.exit(1)
+if not check_file("data/validation_labels.txt"):
+    sys.exit(1)
+
+# The rest of your existing hmm.py code goes here...
 # === 1. CONFIGURATION ===
 def find_config() -> Path:
     """Locate config.yaml whether running from bin/ or project root"""
