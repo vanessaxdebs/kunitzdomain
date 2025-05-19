@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# C extensions
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Environment files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VS Code config
+.vscode/
+
+# macOS files
+.DS_Store
+
+# Output and results
+results/
+*.out
+
+# Data files (optional: comment out if you want to version-control your input data)
+data/
+
+# Logs
+*.log
+
+# WebLogo output (if not tracked)
+*.png
+*.svg
+
+# Ignore system files
+Thumbs.db
+ehthumbs.db
+Icon?
