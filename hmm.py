@@ -14,7 +14,22 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+# Add this near the top of hmm.py
+from pathlib import Path
 
+def find_config():
+    """Locate config.yaml whether running from bin/ or project root"""
+    script_dir = Path(__file__).parent
+    for path in [
+        script_dir / "../config/config.yaml",  # If running from bin/
+        script_dir / "config/config.yaml",     # If running from root
+        Path("config/config.yaml")             # Fallback
+    ]:
+        if path.exists():
+            return path.resolve()
+    raise FileNotFoundError("config.yaml not found!")
+
+CONFIG = load_config(find_config())
 # === 1. CONFIGURATION ===
 def load_config(config_file: str = "config.yaml") -> Dict:
     """Load and validate configuration from YAML file
@@ -226,4 +241,41 @@ def run_hmmlogo(hmm_file: Path, output_dir: Path) -> None:
 CONFIG = load_config()
 
 # === MAIN PIPELINE === 
-# [Previous main() implementation goes here]
+if __name__ == "__main__":
+    # === Load config and define paths ===
+    seed_alignment = Path(CONFIG["seed_alignment"])
+    validation_fasta = Path(CONFIG["validation_fasta"])
+    validation_labels = Path(CONFIG["validation_labels"])
+    swissprot_fasta = Path(CONFIG["swissprot_fasta"])
+    output_dir = CONFIG["output_dir"]
+
+    # === Step 1: Build HMM from seed alignment ===
+    hmm_file = output_dir / "kunitz.hmm"
+    print(f"Building HMM from seed alignment: {seed_alignment}")
+    try:
+        subprocess.run(["hmmbuild", str(hmm_file), str(seed_alignment)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"hmmbuild failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # === Step 2: Run hmmsearch on validation set ===
+    val_tbl = run_hmmsearch(hmm_file, validation_fasta, output_dir, tag="validation")
+
+    # === Step 3: Parse hits and evaluate ===
+    predicted = parse_tblout(val_tbl)
+    positives, negatives = load_labels(validation_labels)
+    metrics = evaluate_performance(predicted, positives, negatives)
+
+    print("\nValidation Performance:")
+    for key, val in metrics.items():
+        print(f"  {key}: {val:.3f}" if isinstance(val, float) else f"  {key}: {val}")
+
+    # === Step 4: Annotate SwissProt ===
+    swiss_tbl = annotate_swissprot(hmm_file, swissprot_fasta, output_dir)
+    swiss_hits = analyze_swissprot(swiss_tbl)
+
+    # === Step 5: Generate HMM logo ===
+    run_hmmlogo(hmm_file, output_dir)
+
+    print(f"\n✅ Pipeline finished. Results saved to: {output_dir}")
+

@@ -1,0 +1,13 @@
+name: hmmologs
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - biopython
+  - pyyaml
+  - requests
+  - mustang
+  - hmmer
+  - seaborn
+
