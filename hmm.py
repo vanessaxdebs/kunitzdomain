@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Kunitz-type Protease Inhibitor Domain - HMM Profile Pipeline
-Compatible with standard bioinformatics and hmmologs project practices.
+Kunitz-type Protease Inhibitor Domain - HMM Profile Pipeline (Biopython version)
+Compatible with hmmologs project standards.
 """
 
 import os
@@ -11,48 +11,70 @@ from pathlib import Path
 from typing import Dict, Set, Tuple
 import yaml
 from datetime import datetime
+from Bio import SeqIO
 
-def check_file(path: str, format: str = "auto") -> bool:
-    """Check for file existence, non-emptiness, and optional format."""
-    if not os.path.isfile(path):
-        print(f"ERROR: Required file '{path}' is missing.")
-        return False
-    if os.path.getsize(path) == 0:
-        print(f"ERROR: Required file '{path}' is empty.")
+# ---------- Biopython-based utilities ----------
+
+def sto_to_fasta(sto_path, fasta_path):
+    """Convert Stockholm alignment to FASTA using Biopython."""
+    count = SeqIO.write(SeqIO.parse(sto_path, "stockholm"), fasta_path, "fasta")
+    print(f"Converted {count} sequences from {sto_path} to {fasta_path}")
+
+def fasta_to_label_txt(fasta_path, txt_path, label="1"):
+    """Write sequence IDs from FASTA to TXT with a fixed label (default: 1)."""
+    count = 0
+    with open(txt_path, "w") as txt:
+        for record in SeqIO.parse(fasta_path, "fasta"):
+            txt.write(f"{record.id}\t{label}\n")
+            count += 1
+    print(f"Wrote {count} sequence labels to {txt_path}")
+
+def check_stockholm(path):
+    """Check if file is valid Stockholm."""
+    try:
+        with open(path) as f:
+            next(SeqIO.parse(f, "stockholm"))
+        return True
+    except Exception:
+        print(f"ERROR: {path} is not a valid Stockholm file.")
         return False
 
+def check_fasta(path):
+    """Check if file is valid FASTA."""
+    try:
+        with open(path) as f:
+            next(SeqIO.parse(f, "fasta"))
+        return True
+    except Exception:
+        print(f"ERROR: {path} is not a valid FASTA file.")
+        return False
+
+def check_label_txt(path):
+    """Basic check for label txt file."""
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        print(f"ERROR: {path} is missing or empty.")
+        return False
     with open(path) as f:
-        first_line = f.readline().strip()
-        # Check Stockholm
-        if format == "stockholm":
-            if not first_line.startswith("# STOCKHOLM 1.0"):
-                print(f"ERROR: '{path}' is not in Stockholm format.")
+        for line in f:
+            if line.strip() and len(line.strip().split()) != 2:
+                print(f"ERROR: {path} has a line with wrong format: '{line.strip()}'")
                 return False
-        # Check FASTA
-        if format == "fasta":
-            if not first_line.startswith(">"):
-                print(f"ERROR: '{path}' does not start with '>' (not FASTA format).")
-                return False
-            for i, line in enumerate(f, 2):
-                if line.startswith("#=GF") or line.startswith("# STOCKHOLM"):
-                    print(f"ERROR: '{path}' contains Stockholm or annotation lines at line {i}. Only plain FASTA allowed.")
-                    return False
     return True
 
+# ---------- Config loading & output dir creation ----------
+
 def find_config() -> Path:
-    """Locate config.yaml in the project."""
     script_dir = Path(__file__).parent
     for path in [
-        script_dir / "../config/config.yaml",  # If running from bin/
-        script_dir / "config/config.yaml",     # If running from root
-        Path("config/config.yaml")             # Fallback
+        script_dir / "../config/config.yaml",
+        script_dir / "config/config.yaml",
+        Path("config/config.yaml")
     ]:
         if path.exists():
             return path.resolve()
     raise FileNotFoundError("config.yaml not found!")
 
 def load_config(config_file: Path = None) -> Dict:
-    """Load YAML config, check required fields, create output dir."""
     if config_file is None:
         config_file = find_config()
     required_fields = {
@@ -76,7 +98,6 @@ def load_config(config_file: Path = None) -> Dict:
                     config[field] = float(config[field])
                 else:
                     raise ValueError(f"Invalid type for {field}, expected {field_type.__name__}")
-        # Create output directory with timestamp
         run_id = datetime.now().strftime("%Y%m%d_%H%M")
         output_dir = Path(config['output_dir']) / f"run_{run_id}"
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -86,8 +107,9 @@ def load_config(config_file: Path = None) -> Dict:
         print(f"Configuration error: {e}", file=sys.stderr)
         sys.exit(1)
 
+# ---------- HMM and metrics functions ----------
+
 def run_hmmbuild(seed_alignment: Path, hmm_file: Path):
-    """Build HMM from Stockholm alignment."""
     cmd = ["hmmbuild", str(hmm_file), str(seed_alignment)]
     print(f"Building HMM: {' '.join(cmd)}")
     try:
@@ -97,7 +119,6 @@ def run_hmmbuild(seed_alignment: Path, hmm_file: Path):
         sys.exit(1)
 
 def run_hmmsearch(hmm_file: Path, fasta_file: Path, output_dir: Path, tag: str = "validation", e_value: float = 1e-5) -> Path:
-    """Run hmmsearch and save table output."""
     tblout = output_dir / f"hmmsearch_{tag}.tbl"
     cmd = [
         "hmmsearch",
@@ -114,7 +135,6 @@ def run_hmmsearch(hmm_file: Path, fasta_file: Path, output_dir: Path, tag: str =
         sys.exit(1)
 
 def parse_tblout(tbl_file: Path) -> Set[str]:
-    """Parse HMMER tblout file, extract sequence IDs."""
     hits = set()
     try:
         with open(tbl_file) as f:
@@ -130,7 +150,6 @@ def parse_tblout(tbl_file: Path) -> Set[str]:
         sys.exit(1)
 
 def load_labels(label_file: Path) -> Tuple[Set[str], Set[str]]:
-    """Load validation labels (tab-separated: seqid [tab] 1/0)."""
     pos, neg = set(), set()
     try:
         with open(label_file) as f:
@@ -145,7 +164,6 @@ def load_labels(label_file: Path) -> Tuple[Set[str], Set[str]]:
         sys.exit(1)
 
 def evaluate_performance(predicted: Set[str], positives: Set[str], negatives: Set[str]) -> Dict:
-    """Calculate performance metrics."""
     tp = len(predicted & positives)
     fp = len(predicted & negatives)
     fn = len(positives - predicted)
@@ -158,7 +176,6 @@ def evaluate_performance(predicted: Set[str], positives: Set[str], negatives: Se
     return dict(TP=tp, FP=fp, FN=fn, TN=tn, accuracy=acc, precision=prec, recall=rec, f1=f1)
 
 def run_hmmlogo(hmm_file: Path, output_dir: Path):
-    """Generate sequence logo from HMM."""
     logo_file = output_dir / "hmm_logo.png"
     cmd = ["hmmlogo", "-o", str(logo_file), str(hmm_file)]
     print(f"Generating HMM logo: {' '.join(cmd)}")
@@ -169,14 +186,29 @@ def run_hmmlogo(hmm_file: Path, output_dir: Path):
         print(f"Failed to generate HMM logo: {e}", file=sys.stderr)
         sys.exit(1)
 
-# === MAIN PIPELINE ===
+# ---------- Main pipeline ----------
+
 if __name__ == "__main__":
-    # --- File checks before config load ---
-    if not check_file("data/kunitz_seed.sto", format="stockholm"):
+    sto_file = "data/kunitz_seed.sto"
+    fasta_file = "data/validation.fasta"
+    label_file = "data/validation_labels.txt"
+
+    # Generate FASTA if missing, from STO
+    if not os.path.isfile(fasta_file) or os.path.getsize(fasta_file) == 0:
+        print("Converting Stockholm to FASTA...")
+        sto_to_fasta(sto_file, fasta_file)
+
+    # Generate label txt if missing, from FASTA
+    if not os.path.isfile(label_file) or os.path.getsize(label_file) == 0:
+        print("Generating labels file from FASTA...")
+        fasta_to_label_txt(fasta_file, label_file, label="1")
+
+    # Validate files
+    if not check_stockholm(sto_file):
         sys.exit(1)
-    if not check_file("data/validation.fasta", format="fasta"):
+    if not check_fasta(fasta_file):
         sys.exit(1)
-    if not check_file("data/validation_labels.txt"):
+    if not check_label_txt(label_file):
         sys.exit(1)
 
     CONFIG = load_config()
