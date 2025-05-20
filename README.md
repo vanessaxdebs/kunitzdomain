@@ -64,7 +64,36 @@ The project is inspired by best practices in protein domain annotation and is de
 ---
 
 ## Setup and Installation
+## SwissProt Data Download
 
+Due to its large size, the SwissProt FASTA file (`data/swissprot.fasta`) is **not included** in this repository.
+
+**To download the SwissProt FASTA:**
+
+1. Visit the [UniProt Downloads page](https://www.uniprot.org/downloads).
+2. Download the latest **SwissProt (reviewed) FASTA** file.  
+   - The file is typically named `uniprot_sprot.fasta.gz`.
+3. Uncompress the file:
+   ```bash
+   gunzip uniprot_sprot.fasta.gz
+   ```
+4. Move or copy the decompressed file to `data/swissprot.fasta` in this repository:
+   ```bash
+   mv uniprot_sprot.fasta data/swissprot.fasta
+   ```
+
+Alternatively, you can use the command line:
+```bash
+wget ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+gunzip uniprot_sprot.fasta.gz
+mv uniprot_sprot.fasta data/swissprot.fasta
+```
+
+**Note:**  
+- If you only want a subset of SwissProt (e.g., specific taxa or reviewed human proteins), use UniProt's [Advanced Search](https://www.uniprot.org/uniprotkb?query=reviewed:true) and download the filtered FASTA file.
+- Make sure the file is named exactly `swissprot.fasta` and placed in the `data/` directory.
+
+---
 ### 1. Clone the repository
 
 ```bash
