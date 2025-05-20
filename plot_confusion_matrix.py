@@ -1,15 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-
-# Example confusion matrix counts (replace these with your actual results)
-# Suppose after parsing: TP = 58, FP = 0, FN = 13, TN = 29 (example values for illustration)
-
 import os
 
 # Example confusion matrix counts (replace these with your actual results)
-
 TP = 58
 FP = 0
 FN = 13
@@ -30,7 +24,6 @@ labels = np.array([["{:.2f}%".format(percent_matrix[i, j]) for j in range(2)] fo
 if not os.path.exists('images'):
     os.makedirs('images')
 
-
 # Plot
 plt.figure(figsize=(6,5))
 sns.heatmap(percent_matrix, annot=labels, fmt='', cmap='Blues', cbar=True, 
@@ -39,15 +32,12 @@ plt.xlabel('Predicted label')
 plt.ylabel('True label')
 plt.title('Confusion Matrix (percentages)')
 plt.tight_layout()
-<<<<<<< HEAD
-plt.savefig('confusion_matrix_kunitz.png', dpi=150)
-plt.show()
-=======
 
 # Save the figure to the 'images' directory
 plt.savefig('images/confusion_matrix_kunitz.png', dpi=150)
 
-# Show the plot
-plt.show()
+# Since this is a headless environment, no need to call plt.show()
+# plt.show()  # This line is commented out or removed
 
+print("Confusion matrix plot saved to 'images/confusion_matrix_kunitz.png'")
 
