@@ -234,7 +234,23 @@ if __name__ == "__main__":
     print("\nValidation Performance:")
     for key, val in metrics.items():
         print(f"  {key}: {val:.3f}" if isinstance(val, float) else f"  {key}: {val}")
-
+    # Save FP and FN for analysis
+    fp = predicted & negatives
+    fn = positives - predicted
+    
+    fp_path = output_dir / "false_positives.txt"
+    fn_path = output_dir / "false_negatives.txt"
+    
+    with open(fp_path, "w") as f:
+        for seq_id in sorted(fp):
+            f.write(seq_id + "\n")
+    
+    with open(fn_path, "w") as f:
+        for seq_id in sorted(fn):
+            f.write(seq_id + "\n")
+    
+    print(f"False Positives: {len(fp)} saved to {fp_path.name}")
+    print(f"False Negatives: {len(fn)} saved to {fn_path.name}")
     # Step 4: Annotate SwissProt
     swiss_tbl = run_hmmsearch(hmm_file, swissprot_fasta, output_dir, tag="swissprot", e_value=e_value)
     swiss_hits = parse_tblout(swiss_tbl)
