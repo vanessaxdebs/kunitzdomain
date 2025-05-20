@@ -1,199 +1,180 @@
-<<<<<<< HEAD
-## Large File Notice
+# Kunitz Domain Profile HMM Pipeline
 
-This repository includes a large data file: `data/swissprot.fasta` (~273 MB).
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-GitHub limits file sizes to 100 MB. To handle this file properly, it is managed using **Git Large File Storage (Git LFS)**.
+## Overview
 
-### How to work with this large file
-
-- Install Git LFS on your machine:  
-  https://git-lfs.github.com/
-
-- After cloning this repo, run:
-
-```bash
-git lfs install
-git lfs pull
-```
-
-This will download the large file efficiently without hitting GitHub’s file size limits.
-=======
-# Kunitz Domain HMM Pipeline
-
-> **Author:** vanessaxdebs  
-> **Repository:** [github.com/vanessaxdebs/kunitzdomain](https://github.com/vanessaxdebs/kunitzdomain)
->
-> **Description:**  
-> This repository contains a reproducible pipeline to build, validate, and apply a profile Hidden Markov Model (HMM) for the Kunitz domain family using HMMER 3.x, as well as code for plotting and visualizing results such as confusion matrices.
+This repository provides a **bioinformatics pipeline** for the identification of Kunitz-type protease inhibitor domains using a structure-informed profile Hidden Markov Model (HMM). The pipeline guides users from structural data collection and alignment through HMM construction, validation, and domain discovery/annotation in SwissProt.  
+The project is inspired by best practices in protein domain annotation and is designed for reproducibility and clarity.
 
 ---
 
-## Quick Start
+## Table of Contents
 
-### 1. **Clone the Repository**
+- [Overview](#overview)
+- [Pipeline Summary](#pipeline-summary)
+- [Directory Structure](#directory-structure)
+- [Setup and Installation](#setup-and-installation)
+- [Input Data Requirements](#input-data-requirements)
+- [Pipeline Steps](#pipeline-steps)
+- [Example Usage](#example-usage)
+- [Expected Outputs](#expected-outputs)
+- [Troubleshooting](#troubleshooting)
+- [References](#references)
+- [License](#license)
 
-```sh
+---
+
+## Pipeline Summary
+
+1. **Structural Data Collection:** Retrieve Kunitz-domain protein structures from the PDB and UniProt.
+2. **Multiple Alignment:** Align representative sequences/structures and create a seed alignment (Stockholm format).
+3. **Profile HMM Construction:** Build a profile HMM using HMMER.
+4. **Model Validation:** Test the HMM on a labeled validation set, compute performance metrics.
+5. **SwissProt Annotation:** Annotate SwissProt proteins using the trained HMM.
+6. **Visualization & Reporting:** Generate sequence logos and performance plots; export results and a final report.
+
+---
+
+## Directory Structure
+
+```text
+.
+├── config/
+│   └── config.yaml             # (Optional) Pipeline configuration file
+├── data/
+│   ├── kunitz_seed.sto         # Seed alignment (Stockholm format)
+│   ├── swissprot.fasta         # SwissProt sequences (FASTA)
+│   ├── validation.fasta        # Validation set sequences (FASTA)
+│   └── validation_labels.txt   # Validation set labels (tab-separated)
+├── results/
+│   ├── kunitz.hmm              # Trained profile HMM
+│   ├── hmmsearch_validation.tbl # Validation search results
+│   ├── hmmsearch_swissprot.tbl # SwissProt search results
+│   ├── hmm_logo.png            # Sequence logo (if generated)
+│   └── ...                     # Other result files and plots
+├── hmm.py                      # Main pipeline script
+├── check_data.py               # (Optional) Data integrity checker
+├── plot_confusion_matrix.py    # (Optional) Script for confusion matrix visualization
+├── environment.yaml            # Conda environment specification
+├── README.md                   # This file
+└── LICENSE
+```
+
+---
+
+## Setup and Installation
+
+### 1. Clone the repository
+
+```bash
 git clone https://github.com/vanessaxdebs/kunitzdomain.git
 cd kunitzdomain
 ```
 
----
+### 2. Create the environment
 
-### 2. **Install Requirements**
+We recommend using **conda** for reproducibility.  
+Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) if needed.
 
-#### HMMER 3.4+ (Required)
-
-- [Download and install HMMER](http://hmmer.org/)
-    - On Ubuntu/Debian:
-    ```sh
-    sudo apt-get install hmmer
-    ```
-    - Or build from source (see the [HMMER website](http://hmmer.org/)).
-
-#### Python 3.7+ and packages
-
-Create a virtual environment (optional but recommended):
-
-```sh
-python3 -m venv .venv
-source .venv/bin/activate
+```bash
+conda env create -f environment.yaml
+conda activate kunitz
 ```
 
-Install required Python packages:
+### 3. Install External Tools
 
-```sh
-pip install matplotlib seaborn
-```
-
-#### (Optional) WebLogo for sequence logos
-
-```sh
-pip install weblogo
-```
+- **HMMER** (required):  
+  Download from [http://hmmer.org/](http://hmmer.org/) and add to your `PATH`.
+- **MUSTANG** (for structural alignment, optional for re-creating seed):  
+  [https://github.com/rdk/pymustang](https://github.com/rdk/pymustang)
+- **JalView** (optional, for alignment editing):  
+  [https://www.jalview.org/](https://www.jalview.org/)
 
 ---
 
-### 3. **Prepare Input Files**
+## Input Data Requirements
 
-Place your files in the `data/` directory:
-- `data/kunitz_seed.sto` — Stockholm alignment of your Kunitz domain family (seed)
-- `data/validation.fasta` — FASTA for validation (with known positive/negative examples)
-- `data/validation_labels.txt` — True class labels for your validation set (for confusion matrix plotting)
-- `data/swissprot.fasta` — SwissProt FASTA (can be downloaded, see below)
+- `data/kunitz_seed.sto`:  
+  Multiple sequence alignment of Kunitz domains in **Stockholm format**.
+- `data/validation.fasta` and `data/validation_labels.txt`:  
+  Validation sequences and label file (tab-separated: `seqid [tab] 1/0`).
+- `data/swissprot.fasta`:  
+  SwissProt protein sequences in FASTA format.
 
-#### Download SwissProt FASTA (if needed)
-
-```sh
-mkdir -p data
-curl -L "https://rest.uniprot.org/uniprotkb/stream?compressed=false&format=fasta&query=reviewed:true" -o data/swissprot.fasta
-```
-**Note:**  
-The SwissProt FASTA is very large! **Do NOT add it to git.** (see `.gitignore`)
+If these files are not present, see the Methods section in the [report](./report.md) for instructions on how to generate them.
 
 ---
 
-### 4. **Run the Pipeline**
+## Pipeline Steps
 
-The main script is `hmm.py`. It will:
-- Build an HMM profile from your seed alignment
-- Validate against your validation set
-- Search the SwissProt database
-- Generate logo data and consensus sequences
+The main pipeline is run via the `hmm.py` script.
 
-```sh
-python3 hmm.py
+### **Running the Pipeline**
+
+```bash
+python hmm.py
 ```
 
-Results will appear in a timestamped subdirectory of `results/`, e.g. `results/run_20250519_1906/`.
+This script:
+
+1. Checks input files.
+2. Builds the profile HMM using `hmmbuild`.
+3. Validates the HMM with `hmmsearch`, computes metrics (accuracy, precision, recall, F1).
+4. Searches SwissProt for Kunitz domains.
+5. Attempts to generate a sequence logo (`hmmlogo`).
+6. Outputs results and summary to the `results/` directory.
+
+**Note:** Some steps (like logo generation) require additional tools (`hmmlogo`, etc.).  
+If a step fails, the script will print a warning, but main results will still be produced.
 
 ---
 
-### 5. **Plot a Confusion Matrix**
+## Example Usage
 
-You can visualize your model’s performance on the validation set using `plot_confusion_matrix.py`.
+### **Basic run**
 
-**How to Use:**
-
-1. Edit `plot_confusion_matrix.py` with your actual TP, FP, TN, FN values, or let it read them from your results.
-2. Run:
-    ```sh
-    python3 plot_confusion_matrix.py
-    ```
-3. It will create `confusion_matrix_kunitz.png` like the one in 
-
-
----
-
-### 6. **Create a Graphical Logo (Optional)**
-
-You can create a PNG/SVG logo using the consensus FASTA output by `hmmemit`:
-
-```sh
-weblogo -F png < results/run_YYYYMMDD_HHMM/hmmemit.fasta > results/run_YYYYMMDD_HHMM/hmm_logo.png
-```
-Or, for SVG:
-```sh
-weblogo -F svg < results/run_YYYYMMDD_HHMM/hmmemit.fasta > results/run_YYYYMMDD_HHMM/hmm_logo.svg
+```bash
+python hmm.py
 ```
 
-Or use the [WebLogo web interface](https://weblogo.berkeley.edu/logo.cgi).
+### **Custom configuration**
 
----
+If using a custom YAML config file:
 
-## Project Structure
-
-```
-.
-├── assets/
-│   ├── confusion_matrix_kunitz.png
-│   └── pipeline.png
-├── data/
-│   ├── kunitz_seed.sto
-│   ├── validation.fasta
-│   ├── validation_labels.txt
-│   └── swissprot.fasta
-├── results/
-│   └── run_YYYYMMDD_HHMM/
-│         ├── kunitz.hmm
-│         ├── hmmsearch_validation.tbl
-│         ├── hmmsearch_swissprot.tbl
-│         ├── hmm_logo.txt
-│         ├── hmmemit.fasta
-│         └── hmm_logo.png (optional)
-├── hmm.py
-├── plot_confusion_matrix.py
-├── check_data.py
-├── .gitignore
-├── README.md
-└── ... etc
+```bash
+python hmm.py --config config/config.yaml
 ```
 
 ---
 
-##  Troubleshooting & FAQ
+## Expected Outputs
 
-- **File too large error on push:**  
-  Do not commit large FASTA files to git. Download them as needed and add to `.gitignore`.
-
-- **hmmlogo/hmmemit not found:**  
-  Ensure HMMER 3.4+ is installed and in your `$PATH`.
-
-- **SwissProt download too large?**  
-  Consider using a smaller FASTA subset for testing.
-
-- **How do I get TP/FP/FN/TN for confusion matrix?**  
-  Parse your `validation.tbl` and match IDs with `validation_labels.txt`.  
-  (See `plot_confusion_matrix.py` for examples or ask for more help!)
+- `results/kunitz.hmm`: The profile HMM.
+- `results/hmmsearch_validation.tbl`: Table of validation search results.
+- `results/hmmsearch_swissprot.tbl`: Table of SwissProt search results.
+- `results/confusion_matrix.png`: Confusion matrix plot of validation results.
+- `results/hmm_logo.png`: Sequence logo (if generated).
+- `results/final_report.md`: Pipeline report in markdown format (if script supports).
+- Other intermediate files and visualizations.
 
 ---
 
-##  Credits
+## Troubleshooting
 
-- [HMMER](http://hmmer.org/)
-- [WebLogo](https://weblogo.berkeley.edu/)
-- [UniProt](https://www.uniprot.org/)
+- **Some files/folders not appearing in GitHub:**  
+  Make sure you have committed and pushed all files. If `results/` is in your `.gitignore`, remove or comment out that line and push again.
+- **HMMER not found:**  
+  Ensure `hmmbuild` and `hmmsearch` are installed and in your `PATH`.
+- **hmmlogo fails:**  
+  This tool is not always bundled with HMMER. If unavailable, you can visualize the domain logo using [Pfam](https://pfam.xfam.org/family/PF00014#tabview=tab5).
+- **Validation set metrics are perfect (e.g., accuracy=1.0):**  
+  This may indicate a small or non-diverse test set. Try using a more challenging or larger validation set if needed.
 
 ---
->>>>>>> b0085d0bd5decfed87252372ed1e30910b5e4d9d
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
+
 
