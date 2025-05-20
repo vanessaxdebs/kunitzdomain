@@ -1,4 +1,6 @@
- Kunitz HMM Project Configuration
+---
+
+# Kunitz HMM Project Configuration
 
 # Required parameters
 output_dir: "results"
