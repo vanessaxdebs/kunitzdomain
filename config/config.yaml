@@ -1,8 +1,8 @@
-# Kunitz HMM Project Configuration
+ Kunitz HMM Project Configuration
 
 # Required parameters
 output_dir: "results"
-seed_alignment: "data/kunitz_seed.sto"
+seed_alignment: "stockholm/kunitz_seed.sto"
 validation_fasta: "data/validation.fasta"
 validation_labels: "data/validation_labels.txt"
 swissprot_fasta: "data/swissprot.fasta"
