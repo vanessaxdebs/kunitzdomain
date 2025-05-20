@@ -24,10 +24,6 @@ venv.bak/
 # macOS files
 .DS_Store
 
-# Output and results
-results/
-*.out
-
 # Data files (optional: comment out if you want to version-control your input data)
 data/
 
