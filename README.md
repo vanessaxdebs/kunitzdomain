@@ -1,6 +1,6 @@
 # Kunitz Domain Profile HMM Pipeline
 
-**Author:** Vanessa debs 
+**Author:** Vanessa debs  
 **Affiliation:** FABIT, University of Bologna
 
 ---
@@ -21,6 +21,7 @@ This repository provides a robust, reproducible bioinformatics pipeline for the 
 - [Pipeline Execution](#pipeline-execution)
 - [Result Visualization](#result-visualization)
 - [SwissProt FASTA Download](#swissprot-fasta-download)
+- [Novelty Check](#novelty-check)
 - [Troubleshooting](#troubleshooting)
 - [References](#references)
 - [License](#license)
@@ -59,6 +60,7 @@ The pipeline comprises the following major steps:
 │   ├── hmm_logo.png              # Sequence logo (if generated)
 │   └── ...                       # Additional outputs
 ├── hmm.py                        # Main pipeline script
+├── novelty_check.py              # Novelty candidate identification script
 ├── check_data.py                 # Data integrity checker
 ├── plot_confusion_matrix.py      # Confusion matrix plotting script
 ├── environment.yaml              # Conda environment specification
@@ -185,6 +187,25 @@ Due to size constraints, `data/swissprot.fasta` must be downloaded by the user:
 
 ---
 
+## Novelty Check
+
+After running the main pipeline and generating SwissProt annotation results, you can identify potentially novel Kunitz domain candidates by running the novelty check script:
+
+```bash
+python novelty_check.py
+```
+
+This script will:
+
+- Parse the latest `results/run_*/hmmsearch_swissprot.tbl` output.
+- Extract UniProt accessions from the HMM search results.
+- Query UniProt for each hit to check if it is already annotated as Kunitz by keyword, Pfam domain, or feature.
+- List all hits **not** annotated as Kunitz in `results/novel_kunitz_candidates.txt`.
+
+Use this list to prioritize candidates for further manual inspection or experimental validation.
+
+---
+
 ## Troubleshooting
 
 - **File Not Found Errors:**  
@@ -216,4 +237,4 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ---
 
-**For questions, issues, or contributions, please use the GitHub issue tracker or contact the repository owner.**
+**For questions, issues, or contributions, please use the GitHub issue tracker or contact the repository owner.** 
