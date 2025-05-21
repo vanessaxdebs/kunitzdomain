@@ -25,6 +25,7 @@ This repository provides a robust, reproducible bioinformatics pipeline for the 
 - [Troubleshooting](#troubleshooting)
 - [References](#references)
 - [License](#license)
+- [Report Download](#report-download)
 
 ---
 
@@ -65,7 +66,8 @@ The pipeline comprises the following major steps:
 ├── plot_confusion_matrix.py      # Confusion matrix plotting script
 ├── environment.yaml              # Conda environment specification
 ├── README.md                     # This file
-└── LICENSE
+├── LICENSE
+└── report.zip                    # PDF report and supplementary materials (see below)
 ```
 
 ---
@@ -234,6 +236,12 @@ Use this list to prioritize candidates for further manual inspection or experime
 ## License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+---
+
+## Report Download
+
+A detailed PDF report and supplementary materials for this project are available for download in [`report.zip`](./report.zip).
 
 ---
 
