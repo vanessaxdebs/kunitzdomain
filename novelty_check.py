@@ -2,7 +2,7 @@
 """
 Novelty check for Kunitz HMM hits:
 Flags hits not already annotated as Kunitz (by keyword, Pfam, or domain description) in UniProt.
-Works with HMMER .tblout with IDs like APLP2_HUMAN/309-361 (extracts entry name, finds accession, checks annotation).
+Works with HMMER .tblout with IDs like sp|P84875|PCPI_SABMA (extracts accession directly).
 """
 
 import os
@@ -22,34 +22,21 @@ def get_latest_results_tbl():
         raise FileNotFoundError(f"{tbl_file} does not exist.")
     return tbl_file
 
-def extract_entry_name(hit_id):
+def extract_uniprot_accession(hit_id):
     """
-    For a hit like APLP2_HUMAN/309-361, returns APLP2_HUMAN.
+    For a hit like sp|P84875|PCPI_SABMA, returns P84875.
+    For a hit like APLP2_HUMAN/309-361, returns APLP2_HUMAN (though this is not a real accession).
     """
-    return hit_id.split('/')[0]
-
-def entry_name_to_accession(entry_name):
-    """
-    Look up accession by UniProt entry name (e.g. APLP2_HUMAN -> accession).
-    Returns accession string or None.
-    """
-    url = f"https://rest.uniprot.org/uniprotkb/search?query=mnemonic:{entry_name}&fields=accession&format=json"
-    try:
-        r = requests.get(url, timeout=10)
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        # Find first hit matching the entry name exactly
-        for result in data.get("results", []):
-            return result["primaryAccession"]
-        return None
-    except Exception as e:
-        print(f"Warning: failed to fetch accession for {entry_name}: {e}")
-        return None
+    if hit_id.startswith("sp|") or hit_id.startswith("tr|"):
+        parts = hit_id.split("|")
+        if len(parts) >= 2:
+            return parts[1]
+    # Fallback: return the part before '/' (if present)
+    return hit_id.split("/")[0]
 
 def load_hmm_hits(hmm_results_file):
     """
-    Loads all unique entry names from the results .tblout file.
+    Loads all unique accessions from the results .tblout file.
     """
     hits = set()
     with open(hmm_results_file) as f:
@@ -57,8 +44,8 @@ def load_hmm_hits(hmm_results_file):
             if line.startswith("#") or not line.strip():
                 continue
             raw_id = line.split()[0]
-            entry_name = extract_entry_name(raw_id)
-            hits.add(entry_name)
+            accession = extract_uniprot_accession(raw_id)
+            hits.add(accession)
     return hits
 
 def is_kunitz_annotated(uniprot_acc):
@@ -91,21 +78,17 @@ def is_kunitz_annotated(uniprot_acc):
 def main():
     tbl_file = get_latest_results_tbl()
     print(f"Using results file: {tbl_file}")
-    entry_names = load_hmm_hits(tbl_file)
-    print(f"Total unique entry names found: {len(entry_names)}")
+    accessions = load_hmm_hits(tbl_file)
+    print(f"Total unique accessions found: {len(accessions)}")
     novel = []
     checked = 0
-    for entry_name in sorted(entry_names):
+    for accession in sorted(accessions):
         checked += 1
-        print(f"[{checked}/{len(entry_names)}] Checking {entry_name}...", end=" ")
-        accession = entry_name_to_accession(entry_name)
-        if not accession:
-            print("COULD NOT FIND ACCESSION -- SKIPPING")
-            continue
+        print(f"[{checked}/{len(accessions)}] Checking {accession}...", end=" ")
         time.sleep(0.2)  # Be kind to UniProt servers
         if not is_kunitz_annotated(accession):
             print("NOVEL")
-            novel.append(f"{entry_name} ({accession})")
+            novel.append(accession)
         else:
             print("known")
         time.sleep(0.2)
