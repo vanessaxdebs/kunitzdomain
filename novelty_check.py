@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+"""
+Novelty check for Kunitz HMM hits:
+Flags hits not already annotated as Kunitz (by keyword, Pfam, or domain description) in UniProt.
+Works with HMMER .tblout with IDs like sp|P84875|PCPI_SABMA (extracts accession directly).
+"""
+
 import os
 from pathlib import Path
 import requests
-import re
 import time
 
 def get_latest_results_tbl():
@@ -16,33 +22,36 @@ def get_latest_results_tbl():
         raise FileNotFoundError(f"{tbl_file} does not exist.")
     return tbl_file
 
-def extract_entry_name(hit_id):
-    # e.g., "APLP2_HUMAN/309-361" -> "APLP2_HUMAN"
-    return hit_id.split('/')[0]
-
 def extract_uniprot_accession(hit_id):
-    # Handles IDs like 'sp|F6ULY1|WFC6B_MOUSE' or just 'F6ULY1'
+    """
+    For a hit like sp|P84875|PCPI_SABMA, returns P84875.
+    For a hit like APLP2_HUMAN/309-361, returns APLP2_HUMAN (though this is not a real accession).
+    """
     if hit_id.startswith("sp|") or hit_id.startswith("tr|"):
-        # Standard UniProt FASTA header
         parts = hit_id.split("|")
         if len(parts) >= 2:
             return parts[1]
-    # If already an accession
-    return hit_id.split("/")[0]  # Also strips any residue range
+    # Fallback: return the part before '/' (if present)
+    return hit_id.split("/")[0]
 
 def load_hmm_hits(hmm_results_file):
+    """
+    Loads all unique accessions from the results .tblout file.
+    """
     hits = set()
     with open(hmm_results_file) as f:
         for line in f:
             if line.startswith("#") or not line.strip():
                 continue
             raw_id = line.split()[0]
-            entry_name = extract_entry_name(raw_id)
-            hits.add(entry_name)
+            accession = extract_uniprot_accession(raw_id)
+            hits.add(accession)
     return hits
 
 def is_kunitz_annotated(uniprot_acc):
-    """Query UniProt API to check for Kunitz annotation in the entry."""
+    """
+    Query UniProt API to check for Kunitz annotation in keywords, Pfam, or domain features.
+    """
     url = f"https://rest.uniprot.org/uniprotkb/{uniprot_acc}.json"
     try:
         r = requests.get(url, timeout=10)
@@ -69,24 +78,20 @@ def is_kunitz_annotated(uniprot_acc):
 def main():
     tbl_file = get_latest_results_tbl()
     print(f"Using results file: {tbl_file}")
-    entry_names = load_hmm_hits(tbl_file)
-    print(f"Total unique entry names found: {len(entry_names)}")
+    accessions = load_hmm_hits(tbl_file)
+    print(f"Total unique accessions found: {len(accessions)}")
     novel = []
     checked = 0
-    for entry_name in entry_names:
+    for accession in sorted(accessions):
         checked += 1
-        print(f"[{checked}/{len(entry_names)}] Checking {entry_name}...", end=" ")
-        accession = entry_name_to_accession(entry_name)
-        if not accession:
-            print("COULD NOT FIND ACCESSION -- SKIPPING")
-            continue
+        print(f"[{checked}/{len(accessions)}] Checking {accession}...", end=" ")
         time.sleep(0.2)  # Be kind to UniProt servers
         if not is_kunitz_annotated(accession):
             print("NOVEL")
-            novel.append(f"{entry_name} ({accession})")
+            novel.append(accession)
         else:
             print("known")
-        time.sleep(0.2)  # Be kind to UniProt servers
+        time.sleep(0.2)
     print(f"\nNovel candidate hits (not annotated as Kunitz): {len(novel)}")
     for n in novel:
         print(n)
