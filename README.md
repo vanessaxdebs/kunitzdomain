@@ -241,7 +241,7 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ## Report Download
 
-A detailed PDF report and supplementary materials for this project are available for download in [⬇️ Click here to download the ZIP file](https://github.com/vanessaxdebs/knuitzdomain/Structure-Informed Profile HMMs for Kunitz Domain Detection_ A Reproducible Pipeline and Its Benchmarking (1).zip)
+A detailed PDF report and supplementary materials for this project are available for download in https://github.com/vanessaxdebs/kunitzdomain/blob/main/Structure-Informed%20Profile%20HMMs%20for%20Kunitz%20Domain%20Detection_%20A%20Reproducible%20Pipeline%20and%20Its%20Benchmarking%20(1).zip
 
 ---
 
