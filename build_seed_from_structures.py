@@ -31,10 +31,11 @@ os.makedirs(aligned_dir, exist_ok=True)
 aligned_fasta = os.path.join(aligned_dir, "kunitz_alignment.fasta")
 
 cmd = [
-    "mustang",
+   "mustang",
     "-i",
     *[os.path.join(chain_dir, f"{pdb_id}_{chains[pdb_id]}.pdb") for pdb_id in pdb_ids],
-    "-o", os.path.join(aligned_dir, "kunitz_alignment")
+    "-o", output_prefix, # This uses the variable output_prefix for the -o flag
+    "-F", "fasta"  
 ]
 print("Running MUSTANG:", " ".join(cmd))
 subprocess.run(cmd, check=True)
