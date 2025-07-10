@@ -44,8 +44,8 @@ os.makedirs(aligned_dir, exist_ok=True) # Ensure the directory for aligned struc
 # Define the common output prefix for MUSTANG's files (e.g., kunitz_alignment.fasta, kunitz_alignment.pdb)
 output_prefix = os.path.join(aligned_dir, "kunitz_alignment")
 
-# Define the path where the FASTA alignment output is expected
-aligned_fasta = os.path.join(aligned_dir, "kunitz_alignment.fasta")
+# Define the path where the FASTA alignment output is expected (corrected from .fasta to .afasta)
+aligned_fasta = os.path.join(aligned_dir, "kunitz_alignment.afasta") # Corrected from .fasta to .afasta based on MUSTANG output
 
 # Construct the command for MUSTANG
 cmd = [
@@ -72,6 +72,11 @@ print(f"\nConverting FASTA alignment from '{input_fasta}' to Stockholm format...
 # Read the FASTA alignment using Biopython's AlignIO
 align = AlignIO.read(input_fasta, "fasta")
 
+# Write the alignment to Stockholm format
+with open(output_sto, "w") as out:
+    AlignIO.write(align, out, "stockholm")
+
+print(f"Structural Stockholm alignment created at {output_sto}")
 # Write the alignment to Stockholm format
 with open(output_sto, "w") as out:
     AlignIO.write(align, out, "stockholm")
