@@ -12,7 +12,7 @@ from Bio.PDB import PDBList
 # Step 1: Download PDB files
 # These are the PDB IDs and their respective chains for the Kunitz domains
 pdb_ids = ["3TGI", "1BPI", "5PTI","5ZJ3","1Y62","3OFW","5YV7","1DTX","5M4V","3M7Q"]  # Add more if desired
-chains = {"3TGI": "I", "1BPI": "A", "5PTI": "A","5ZJ3" : "A","1Y62": "A","3OFW": "A","5YV7":"A","1DTX": "A","5M4V":"A",3M7Q": "B"}
+chains = {"3TGI": "I", "1BPI": "A", "5PTI": "A","5ZJ3" : "A","1Y62": "A","3OFW": "A","5YV7":"A","1DTX": "A","5M4V":"A","3M7Q": "B"}
 
 pdb_dir = "pdb_structures"
 chain_dir = os.path.join(pdb_dir, "chains")
