@@ -189,6 +189,8 @@ def run_hmmlogo(hmm_file: Path, output_dir: Path):
 # ---------- Main pipeline ----------
 
 if __name__ == "__main__":
+     # Convert Stockholm to ungapped FASTA before validation
+    sto_to_ungapped_fasta("data/kunitz_seed.sto", "data/validation.fasta")
     sto_file = "data/kunitz_seed.sto"
     fasta_file = "data/validation.fasta"
     label_file = "data/validation_labels.txt"
