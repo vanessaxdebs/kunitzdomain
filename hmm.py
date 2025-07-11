@@ -14,6 +14,30 @@ from datetime import datetime
 from Bio import SeqIO
 
 # ---------- Biopython-based utilities ----------
+def sto_to_ungapped_fasta(sto_path, fasta_path):
+    """
+    Convert a Stockholm alignment to an ungapped FASTA file (removing -, ., and spaces).
+    """
+    seqs = {}
+    with open(sto_path) as f:
+        for line in f:
+            if line.startswith("#") or line.startswith("//") or not line.strip():
+                continue
+            parts = line.strip().split()
+            if len(parts) == 2:
+                name, seq = parts
+                seqs.setdefault(name, "")
+                seqs[name] += seq
+    with open(fasta_path, "w") as outfa:
+        for name, seq in seqs.items():
+            seq = seq.replace("-", "").replace(".", "").replace(" ", "")
+            outfa.write(f">{name}\n{seq}\n")
+    print(f"Converted {len(seqs)} sequences from {sto_path} to {fasta_path}")
+
+# Example usage in your pipeline:
+sto_to_ungapped_fasta("data/kunitz_seed.sto", "data/validation.fasta")
+
+
 
 def sto_to_fasta(sto_path, fasta_path):
     """Convert Stockholm alignment to FASTA using Biopython."""
