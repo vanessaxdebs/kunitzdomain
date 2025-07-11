@@ -2,6 +2,7 @@
 """
 Kunitz-type Protease Inhibitor Domain - HMM Profile Pipeline (Biopython version)
 Compatible with hmmologs project standards.
+Includes positive and negative validation.
 """
 
 import os
@@ -14,10 +15,8 @@ from datetime import datetime
 from Bio import SeqIO
 
 # ---------- Biopython-based utilities ----------
+
 def sto_to_ungapped_fasta(sto_path, fasta_path):
-    """
-    Convert a Stockholm alignment to an ungapped FASTA file (removing -, ., and spaces).
-    """
     seqs = {}
     with open(sto_path) as f:
         for line in f:
@@ -34,18 +33,11 @@ def sto_to_ungapped_fasta(sto_path, fasta_path):
             outfa.write(f">{name}\n{seq}\n")
     print(f"Converted {len(seqs)} sequences from {sto_path} to {fasta_path}")
 
-# Example usage in your pipeline:
-sto_to_ungapped_fasta("data/kunitz_seed.sto", "data/validation.fasta")
-
-
-
 def sto_to_fasta(sto_path, fasta_path):
-    """Convert Stockholm alignment to FASTA using Biopython."""
     count = SeqIO.write(SeqIO.parse(sto_path, "stockholm"), fasta_path, "fasta")
     print(f"Converted {count} sequences from {sto_path} to {fasta_path}")
 
 def fasta_to_label_txt(fasta_path, txt_path, label="1"):
-    """Write sequence IDs from FASTA to TXT with a fixed label (default: 1)."""
     count = 0
     with open(txt_path, "w") as txt:
         for record in SeqIO.parse(fasta_path, "fasta"):
@@ -54,7 +46,6 @@ def fasta_to_label_txt(fasta_path, txt_path, label="1"):
     print(f"Wrote {count} sequence labels to {txt_path}")
 
 def check_stockholm(path):
-    """Check if file is valid Stockholm."""
     try:
         with open(path) as f:
             next(SeqIO.parse(f, "stockholm"))
@@ -64,7 +55,6 @@ def check_stockholm(path):
         return False
 
 def check_fasta(path):
-    """Check if file is valid FASTA."""
     try:
         with open(path) as f:
             next(SeqIO.parse(f, "fasta"))
@@ -74,7 +64,6 @@ def check_fasta(path):
         return False
 
 def check_label_txt(path):
-    """Basic check for label txt file."""
     if not os.path.isfile(path) or os.path.getsize(path) == 0:
         print(f"ERROR: {path} is missing or empty.")
         return False
@@ -106,6 +95,8 @@ def load_config(config_file: Path = None) -> Dict:
         'seed_alignment': str,
         'validation_fasta': str,
         'validation_labels': str,
+        'negative_fasta': str,
+        'negative_labels': str,
         'swissprot_fasta': str,
         'e_value_cutoff': float,
         'pdb_id': str
@@ -155,7 +146,7 @@ def run_hmmsearch(hmm_file: Path, fasta_file: Path, output_dir: Path, tag: str =
         subprocess.run(cmd, check=True, capture_output=True)
         return tblout
     except subprocess.CalledProcessError as e:
-        print(f"hmmsearch failed. Error:\n{e.stderr}", file=sys.stderr)
+        print(f"hmmsearch failed. Error:\n{e.stderr.decode()}", file=sys.stderr)
         sys.exit(1)
 
 def parse_tblout(tbl_file: Path) -> Set[str]:
@@ -213,74 +204,89 @@ def run_hmmlogo(hmm_file: Path, output_dir: Path):
 # ---------- Main pipeline ----------
 
 if __name__ == "__main__":
-    sto_file = "data/kunitz_seed.sto"
-    fasta_file = "data/validation.fasta"
-    label_file = "data/validation_labels.txt"
-
-    # Generate FASTA if missing, from STO
-    if not os.path.isfile(fasta_file) or os.path.getsize(fasta_file) == 0:
-        print("Converting Stockholm to FASTA...")
-        sto_to_fasta(sto_file, fasta_file)
-
-    # Generate label txt if missing, from FASTA
-    if not os.path.isfile(label_file) or os.path.getsize(label_file) == 0:
-        print("Generating labels file from FASTA...")
-        fasta_to_label_txt(fasta_file, label_file, label="1")
-
-    # Validate files
-    if not check_stockholm(sto_file):
-        sys.exit(1)
-    if not check_fasta(fasta_file):
-        sys.exit(1)
-    if not check_label_txt(label_file):
-        sys.exit(1)
-
     CONFIG = load_config()
-    seed_alignment = Path(CONFIG["seed_alignment"])
+
+    sto_file = Path(CONFIG["seed_alignment"])
     validation_fasta = Path(CONFIG["validation_fasta"])
     validation_labels = Path(CONFIG["validation_labels"])
+    negative_fasta = Path(CONFIG["negative_fasta"])
+    negative_labels = Path(CONFIG["negative_labels"])
     swissprot_fasta = Path(CONFIG["swissprot_fasta"])
     output_dir = CONFIG["output_dir"]
     e_value = CONFIG["e_value_cutoff"]
 
-    # Step 1: Build HMM
+    # Convert seed alignment Stockholm to FASTA if needed
+    fasta_seed = output_dir / "seed.fasta"
+    if not fasta_seed.exists() or fasta_seed.stat().st_size == 0:
+        sto_to_fasta(sto_file, fasta_seed)
+
+    # Convert validation Stockholm to FASTA if needed
+    if not validation_fasta.exists() or validation_fasta.stat().st_size == 0:
+        print("Validation FASTA missing or empty. Please provide it.")
+        sys.exit(1)
+
+    # Check files
+    if not check_stockholm(sto_file):
+        sys.exit(1)
+    if not check_fasta(validation_fasta):
+        sys.exit(1)
+    if not check_fasta(negative_fasta):
+        sys.exit(1)
+    if not check_label_txt(validation_labels):
+        sys.exit(1)
+    if not check_label_txt(negative_labels):
+        sys.exit(1)
+
+    # Build HMM
     hmm_file = output_dir / "kunitz.hmm"
-    run_hmmbuild(seed_alignment, hmm_file)
+    run_hmmbuild(sto_file, hmm_file)
 
-    # Step 2: Run hmmsearch on validation set
+    # Run hmmsearch on validation positives
     val_tbl = run_hmmsearch(hmm_file, validation_fasta, output_dir, tag="validation", e_value=e_value)
+    val_predicted = parse_tblout(val_tbl)
+    val_positives, val_negatives = load_labels(validation_labels)
 
-    # Step 3: Parse hits and evaluate
-    predicted = parse_tblout(val_tbl)
-    positives, negatives = load_labels(validation_labels)
-    metrics = evaluate_performance(predicted, positives, negatives)
+    # Run hmmsearch on negative sequences
+    neg_tbl = run_hmmsearch(hmm_file, negative_fasta, output_dir, tag="negative", e_value=e_value)
+    neg_predicted = parse_tblout(neg_tbl)
+    neg_positives, neg_negatives = load_labels(negative_labels)
 
-    print("\nValidation Performance:")
+    # Combine predictions and labels for evaluation
+    all_predicted = val_predicted.union(neg_predicted)
+    all_positives = val_positives  # Positives only from validation labels
+    all_negatives = val_negatives.union(neg_negatives)  # Combine negative seq IDs
+
+    # Evaluate combined performance
+    metrics = evaluate_performance(all_predicted, all_positives, all_negatives)
+
+    print("\nCombined Validation Performance (Positives + Negatives):")
     for key, val in metrics.items():
         print(f"  {key}: {val:.3f}" if isinstance(val, float) else f"  {key}: {val}")
-    # Save FP and FN for analysis
-    fp = predicted & negatives
-    fn = positives - predicted
-    
+
+    # Save false positives and false negatives for analysis
+    fp = all_predicted & all_negatives
+    fn = all_positives - all_predicted
+
     fp_path = output_dir / "false_positives.txt"
     fn_path = output_dir / "false_negatives.txt"
-    
+
     with open(fp_path, "w") as f:
         for seq_id in sorted(fp):
             f.write(seq_id + "\n")
-    
+
     with open(fn_path, "w") as f:
         for seq_id in sorted(fn):
             f.write(seq_id + "\n")
-    
+
     print(f"False Positives: {len(fp)} saved to {fp_path.name}")
     print(f"False Negatives: {len(fn)} saved to {fn_path.name}")
-    # Step 4: Annotate SwissProt
+
+    # Annotate SwissProt
     swiss_tbl = run_hmmsearch(hmm_file, swissprot_fasta, output_dir, tag="swissprot", e_value=e_value)
     swiss_hits = parse_tblout(swiss_tbl)
     print(f"\nSwissProt hits: {len(swiss_hits)}")
 
-    # Step 5: Generate HMM logo
+    # Generate HMM logo
     run_hmmlogo(hmm_file, output_dir)
 
     print(f"\n✅ Pipeline finished. Results saved to: {output_dir}")
